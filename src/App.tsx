@@ -54,12 +54,16 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const Logo = () => (
+const Logo = ({ customLogo }: { customLogo?: string }) => (
   <div className="flex items-center gap-3">
     <div className="relative w-10 h-10 flex items-center justify-center">
       <div className="absolute inset-0 bg-brand-primary/20 rounded-xl rotate-6" />
-      <div className="relative bg-brand-primary text-white p-2 rounded-xl">
-        <Video className="w-5 h-5" />
+      <div className="relative bg-brand-primary text-white p-2 rounded-xl overflow-hidden">
+        {customLogo ? (
+          <img src={customLogo} alt="Logo" className="w-full h-full object-contain" />
+        ) : (
+          <Video className="w-5 h-5" />
+        )}
       </div>
     </div>
     <div className="flex flex-col">
@@ -117,16 +121,30 @@ export default function App() {
     additionalInstructions: ''
   });
 
-  const [settings, setSettings] = useState<AppSettings>({
-    language: 'English',
-    voiceStyle: 'Professional Male',
-    resolution: '1080p',
-    animationIntensity: 50,
-    subtitles: true,
-    musicVolume: 70,
-    brandColor: '#F27D26',
-    exportFormat: 'MP4',
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    const saved = localStorage.getItem('modo_settings');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse saved settings", e);
+      }
+    }
+    return {
+      language: 'English',
+      voiceStyle: 'Professional Male',
+      resolution: '1080p',
+      animationIntensity: 50,
+      subtitles: true,
+      musicVolume: 70,
+      brandColor: '#F27D26',
+      exportFormat: 'MP4',
+    };
   });
+
+  useEffect(() => {
+    localStorage.setItem('modo_settings', JSON.stringify(settings));
+  }, [settings]);
 
   const handleGenerateAd = async () => {
     if (!adConfig.productName || !adConfig.description) return;
@@ -145,7 +163,11 @@ export default function App() {
       setHistory(prev => [newAd, ...prev]);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to generate ad script');
+      let msg = err.message || 'Failed to generate ad script';
+      if (msg.includes('API key not valid')) {
+        msg = 'The Gemini API key is invalid. Please check your Settings or the server environment variables.';
+      }
+      setError(msg);
     } finally {
       setIsGenerating(false);
     }
@@ -168,7 +190,11 @@ export default function App() {
       setHistory(prev => [newContent, ...prev]);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to generate content');
+      let msg = err.message || 'Failed to generate content';
+      if (msg.includes('API key not valid')) {
+        msg = 'The Gemini API key is invalid. Please check your Settings or the server environment variables.';
+      }
+      setError(msg);
     } finally {
       setIsGenerating(false);
     }
@@ -185,7 +211,11 @@ export default function App() {
       setRefineInput('');
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to refine content');
+      let msg = err.message || 'Failed to refine content';
+      if (msg.includes('API key not valid')) {
+        msg = 'The Gemini API key is invalid. Please check your Settings or the server environment variables.';
+      }
+      setError(msg);
     } finally {
       setIsRefining(false);
     }
@@ -196,7 +226,7 @@ export default function App() {
     setHistory(prev => prev.filter(item => item.id !== id));
   };
 
-  const NavItem = ({ tab, icon: Icon, label }: { tab: any, icon: any, label: string }) => (
+  const NavItem = ({ tab, icon: Icon, label }: { tab: 'dashboard' | 'create' | 'settings', icon: any, label: string }) => (
     <button 
       onClick={() => { setActiveTab(tab); setIsMobileMenuOpen(false); }}
       className={cn(
@@ -216,7 +246,7 @@ export default function App() {
       {/* Sidebar (Desktop) */}
       <aside className="hidden md:flex w-72 bg-card border-r border-ink/5 flex-col z-20 sticky top-0 h-screen">
         <div className="p-8">
-          <Logo />
+          <Logo customLogo={settings.logoWatermark} />
           <nav className="mt-12 space-y-2">
             <NavItem tab="dashboard" icon={LayoutDashboard} label="Dashboard" />
             <NavItem tab="create" icon={Plus} label="Create Ad" />
@@ -236,7 +266,7 @@ export default function App() {
 
       {/* Mobile Header */}
       <header className="md:hidden h-16 bg-card border-b border-ink/5 flex items-center justify-between px-6 sticky top-0 z-30">
-        <Logo />
+        <Logo customLogo={settings.logoWatermark} />
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setIsDarkMode(!isDarkMode)}
@@ -786,9 +816,23 @@ export default function App() {
                           <ImageIcon className="w-3 h-3" />
                           Logo Watermark
                         </label>
-                        <button className="w-full py-3 bg-paper border border-dashed border-ink/10 rounded-xl text-[10px] font-bold uppercase tracking-widest text-ink/40 hover:border-brand-primary/20 transition-all">
-                          Upload Logo
-                        </button>
+                        {settings.logoWatermark ? (
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-paper rounded-xl border border-ink/5 p-2 flex items-center justify-center">
+                              <img src={settings.logoWatermark} alt="Logo" className="max-w-full max-h-full object-contain" />
+                            </div>
+                            <button 
+                              onClick={() => setSettings({...settings, logoWatermark: undefined})}
+                              className="text-[10px] font-bold uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="w-full py-3 bg-paper border border-dashed border-ink/10 rounded-xl text-[10px] font-bold uppercase tracking-widest text-ink/40 flex items-center justify-center">
+                            No Logo Set
+                          </div>
+                        )}
                       </div>
                     </div>
 

@@ -1,98 +1,47 @@
-import { GoogleGenAI } from "@google/genai";
 import { AdConfig, WritingConfig } from "../types";
 
-const getAI = (customKey?: string) => {
-  const key = customKey || process.env.GEMINI_API_KEY;
-  if (!key) {
-    throw new Error("GEMINI_API_KEY is not set. Please provide one in Settings.");
-  }
-  return new GoogleGenAI({ apiKey: key });
-};
-
 export const generateWriting = async (config: WritingConfig, customKey?: string) => {
-  const ai = getAI(customKey);
-  const model = "gemini-3-flash-preview";
-
-  const prompt = `
-    Write a ${config.length} ${config.type} about "${config.topic}".
-    Tone: ${config.tone}
-    ${config.additionalInstructions ? `Additional Instructions: ${config.additionalInstructions}` : ""}
-
-    Please provide a title and the body content.
-    Format your response as a JSON object with "title" and "body" fields.
-    The "body" should be in Markdown format.
-  `;
-
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-    },
+  const response = await fetch("/api/generate-writing", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ config, customKey }),
   });
 
-  try {
-    return JSON.parse(response.text || "{}");
-  } catch (e) {
-    console.error("Failed to parse AI response", e);
-    return { title: "Untitled", body: response.text };
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to generate writing");
   }
+
+  return response.json();
 };
 
 export const refineWriting = async (content: string, instruction: string, customKey?: string) => {
-  const ai = getAI(customKey);
-  const model = "gemini-3-flash-preview";
-
-  const prompt = `
-    Refine the following content based on this instruction: "${instruction}"
-    
-    Content:
-    ${content}
-
-    Provide the updated content in Markdown format.
-  `;
-
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
+  const response = await fetch("/api/refine-writing", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content, instruction, customKey }),
   });
 
-  return response.text;
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to refine writing");
+  }
+
+  const data = await response.json();
+  return data.text;
 };
 
 export const generateAdScript = async (config: AdConfig, customKey?: string) => {
-  const ai = getAI(customKey);
-  const model = "gemini-3-flash-preview";
-
-  const prompt = `
-    Generate a marketing script for a ${config.duration} video advertisement.
-    Product: ${config.productName}
-    Brand: ${config.brand}
-    Description: ${config.description}
-    Price: ${config.price}
-    Target Audience: ${config.targetAudience}
-    Ad Style: ${config.style}
-
-    The script should include:
-    1. A catchy title for the ad.
-    2. A scene-by-scene breakdown (Visuals and Voiceover).
-    3. A clear Call to Action (CTA).
-
-    Format your response as a JSON object with "title" and "script" (Markdown) fields.
-  `;
-
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-    },
+  const response = await fetch("/api/generate-ad", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ config, customKey }),
   });
 
-  try {
-    return JSON.parse(response.text || "{}");
-  } catch (e) {
-    console.error("Failed to parse AI response", e);
-    return { title: "Untitled Ad", script: response.text };
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to generate ad script");
   }
+
+  return response.json();
 };
