@@ -33,6 +33,7 @@ export interface AppSettings {
   brandColor: string;
   logoWatermark?: string;
   exportFormat: ExportFormat;
+  apiKey?: string;
 }
 
 export interface GeneratedAd {

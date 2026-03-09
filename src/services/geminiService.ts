@@ -1,15 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
 import { AdConfig, WritingConfig } from "../types";
 
-const getAI = () => {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not set");
+const getAI = (customKey?: string) => {
+  const key = customKey || process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error("GEMINI_API_KEY is not set. Please provide one in Settings.");
   }
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  return new GoogleGenAI({ apiKey: key });
 };
 
-export const generateWriting = async (config: WritingConfig) => {
-  const ai = getAI();
+export const generateWriting = async (config: WritingConfig, customKey?: string) => {
+  const ai = getAI(customKey);
   const model = "gemini-3-flash-preview";
 
   const prompt = `
@@ -38,8 +39,8 @@ export const generateWriting = async (config: WritingConfig) => {
   }
 };
 
-export const refineWriting = async (content: string, instruction: string) => {
-  const ai = getAI();
+export const refineWriting = async (content: string, instruction: string, customKey?: string) => {
+  const ai = getAI(customKey);
   const model = "gemini-3-flash-preview";
 
   const prompt = `
@@ -59,8 +60,8 @@ export const refineWriting = async (content: string, instruction: string) => {
   return response.text;
 };
 
-export const generateAdScript = async (config: AdConfig) => {
-  const ai = getAI();
+export const generateAdScript = async (config: AdConfig, customKey?: string) => {
+  const ai = getAI(customKey);
   const model = "gemini-3-flash-preview";
 
   const prompt = `

@@ -87,6 +87,7 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [refineInput, setRefineInput] = useState('');
   const [isRefining, setIsRefining] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -131,7 +132,8 @@ export default function App() {
     if (!adConfig.productName || !adConfig.description) return;
     setIsGenerating(true);
     try {
-      const result = await generateAdScript(adConfig);
+      setError(null);
+      const result = await generateAdScript(adConfig, settings.apiKey);
       const newAd: GeneratedAd = {
         id: Math.random().toString(36).substr(2, 9),
         title: result.title || 'Untitled Ad',
@@ -141,8 +143,9 @@ export default function App() {
       };
       setGeneratedAd(newAd);
       setHistory(prev => [newAd, ...prev]);
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to generate ad script');
     } finally {
       setIsGenerating(false);
     }
@@ -152,7 +155,8 @@ export default function App() {
     if (!writingConfig.topic) return;
     setIsGenerating(true);
     try {
-      const result = await generateWriting(writingConfig);
+      setError(null);
+      const result = await generateWriting(writingConfig, settings.apiKey);
       const newContent: GeneratedContent = {
         id: Math.random().toString(36).substr(2, 9),
         title: result.title || 'Untitled',
@@ -162,8 +166,9 @@ export default function App() {
       };
       setGeneratedContent(newContent);
       setHistory(prev => [newContent, ...prev]);
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to generate content');
     } finally {
       setIsGenerating(false);
     }
@@ -173,12 +178,14 @@ export default function App() {
     if (!refineInput || !generatedContent) return;
     setIsRefining(true);
     try {
-      const newBody = await refineWriting(generatedContent.body, refineInput);
+      setError(null);
+      const newBody = await refineWriting(generatedContent.body, refineInput, settings.apiKey);
       const updatedContent = { ...generatedContent, body: newBody || generatedContent.body };
       setGeneratedContent(updatedContent);
       setRefineInput('');
-    } catch (error) {
-      console.error(error);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to refine content');
     } finally {
       setIsRefining(false);
     }
@@ -245,6 +252,22 @@ export default function App() {
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-6xl mx-auto p-6 md:p-10">
             <AnimatePresence mode="wait">
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-3 text-red-500 text-xs font-bold uppercase tracking-widest">
+                    <ShieldCheck className="w-4 h-4" />
+                    {error}
+                  </div>
+                  <button onClick={() => setError(null)} className="text-red-500/40 hover:text-red-500 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </motion.div>
+              )}
               {activeTab === 'dashboard' && (
                 <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
                   <div className="bg-card p-8 rounded-[32px] border border-ink/5 shadow-sm">
@@ -767,6 +790,23 @@ export default function App() {
                           Upload Logo
                         </button>
                       </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-ink/40">
+                        <ShieldCheck className="w-3 h-3" />
+                        Gemini API Key (Optional if set in environment)
+                      </label>
+                      <input 
+                        type="password"
+                        value={settings.apiKey || ''}
+                        onChange={e => setSettings({...settings, apiKey: e.target.value})}
+                        placeholder="Enter your Gemini API Key..."
+                        className="w-full bg-paper border border-ink/5 rounded-xl px-4 py-3 text-xs font-medium focus:ring-1 focus:ring-brand-primary/20 transition-all"
+                      />
+                      <p className="text-[9px] text-ink/30 uppercase tracking-widest">
+                        Your key is stored locally in your browser and used only for requests.
+                      </p>
                     </div>
 
                     <div className="space-y-4">
