@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { WritingConfig } from "../types";
+import { AdConfig, WritingConfig } from "../types";
 
 const getAI = () => {
   if (!process.env.GEMINI_API_KEY) {
@@ -57,4 +57,41 @@ export const refineWriting = async (content: string, instruction: string) => {
   });
 
   return response.text;
+};
+
+export const generateAdScript = async (config: AdConfig) => {
+  const ai = getAI();
+  const model = "gemini-3-flash-preview";
+
+  const prompt = `
+    Generate a marketing script for a ${config.duration} video advertisement.
+    Product: ${config.productName}
+    Brand: ${config.brand}
+    Description: ${config.description}
+    Price: ${config.price}
+    Target Audience: ${config.targetAudience}
+    Ad Style: ${config.style}
+
+    The script should include:
+    1. A catchy title for the ad.
+    2. A scene-by-scene breakdown (Visuals and Voiceover).
+    3. A clear Call to Action (CTA).
+
+    Format your response as a JSON object with "title" and "script" (Markdown) fields.
+  `;
+
+  const response = await ai.models.generateContent({
+    model,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+    },
+  });
+
+  try {
+    return JSON.parse(response.text || "{}");
+  } catch (e) {
+    console.error("Failed to parse AI response", e);
+    return { title: "Untitled Ad", script: response.text };
+  }
 };
